@@ -1,0 +1,19 @@
+name = "reallistr-api"
+main = "src/index.ts"
+compatibility_date = "2024-09-10"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "reallistr"
+database_id = "REPLACE_WITH_D1_ID"
+
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "reallistr-media"
+
+[[kv_namespaces]]
+binding = "KV"
+id = "REPLACE_KV_ID"
+
+[vars]
+MAPBOX_TOKEN = "REPLACE"

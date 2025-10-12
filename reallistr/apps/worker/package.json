@@ -1,0 +1,18 @@
+{
+  "name": "reallistr-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "migrate": "wrangler d1 migrations apply reallistr"
+  },
+  "dependencies": {
+    "hono": "^4.4.8",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "wrangler": "^3.78.7",
+    "typescript": "^5.5.4"
+  }
+}
