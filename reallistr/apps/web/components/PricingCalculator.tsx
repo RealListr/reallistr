@@ -51,9 +51,11 @@ export type PricingPayload = {
 export default function PricingCalculator({
   onChange,
   onContinue,
+  showMedia = true,
 }: {
   onChange?: (payload: PricingPayload) => void;
   onContinue?: (payload: PricingPayload) => void;
+  showMedia?: boolean;
 }) {
   // Business + Market
   const [businessType, setBusinessType] = useState<BusinessType>("Real Estate");
@@ -292,7 +294,8 @@ export default function PricingCalculator({
         </div>
       </Card>
 
-      {/* Agents media (compact) */}
+      {/* Agents media (optional) */}
+      {showMedia && (
       <Card title="Agents media" subtitle="Upload agents list and optional media ZIP">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <label className="text-sm">
@@ -324,6 +327,7 @@ export default function PricingCalculator({
           </label>
         </div>
       </Card>
+      )}
 
       {/* Order Summary */}
       <Card title="Order Summary">
