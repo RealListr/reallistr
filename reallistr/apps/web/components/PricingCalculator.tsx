@@ -30,21 +30,8 @@ export type PricingPayload = {
   tier: TierKey;
   agents: number;
   perAgent: number;
-
-  ads: {
-    standardQty: number;
-    featureQty: number;
-    premierQty: number;
-    total: number; // ex-GST
-  };
-
-  leads: {
-    valuationQty: number; // # of leads
-    financeQty: number;
-    insuranceQty: number;
-    total: number; // ex-GST
-  };
-
+  ads: { standardQty: number; featureQty: number; premierQty: number; total: number };
+  leads: { valuationQty: number; financeQty: number; insuranceQty: number; total: number };
   subtotalExGst: number;
   gst: number;
   totalInclGst: number;
@@ -76,27 +63,16 @@ export default function PricingCalculator({
   const [premierQty, setPremierQty]   = useState(0); // $2999
 
   // ----- lead packs (per lead) -----
-  // $49 valuation/listing, $95 finance, $69 insurance
-  const [valuationQty, setValuationQty] = useState(0);
-  const [financeQty, setFinanceQty]     = useState(0);
-  const [insuranceQty, setInsuranceQty] = useState(0);
+  const [valuationQty, setValuationQty] = useState(0); // $49
+  const [financeQty, setFinanceQty]     = useState(0); // $95
+  const [insuranceQty, setInsuranceQty] = useState(0); // $69
 
-  // helpers
   const money = useMemo(() => {
     const safeAgents = clamp(agents, tier.minAgents, tier.maxAgents);
     const perA = Math.max(0, perAgent);
 
-    // ad packages
-    const adsTotal =
-      standardQty * 599 +
-      featureQty * 1299 +
-      premierQty * 2999;
-
-    // lead packs
-    const leadsTotal =
-      valuationQty * 49 +
-      financeQty * 95 +
-      insuranceQty * 69;
+    const adsTotal = standardQty * 599 + featureQty * 1299 + premierQty * 2999;
+    const leadsTotal = valuationQty * 49 + financeQty * 95 + insuranceQty * 69;
 
     const planSubtotal = tier.base + safeAgents * perA;
     const subtotal = planSubtotal + adsTotal + leadsTotal;
@@ -114,30 +90,21 @@ export default function PricingCalculator({
       totalInclGst: total,
     };
     return payload;
-  }, [
-    tierKey, tier, agents, perAgent,
-    standardQty, featureQty, premierQty,
-    valuationQty, financeQty, insuranceQty
-  ]);
+  }, [tierKey, tier, agents, perAgent, standardQty, featureQty, premierQty, valuationQty, financeQty, insuranceQty]);
 
   // bubble up
   useMemo(() => onChange?.(money), [money, onChange]);
 
-  // small controls
+  // small controls (upsized)
   const Qty = ({
-    value, setValue, min = 0, max,
-    aria,
+    value, setValue, min = 0, max, aria,
   }: {
-    value: number;
-    setValue: (n: number) => void;
-    min?: number;
-    max?: number;
-    aria: string;
+    value: number; setValue: (n: number) => void; min?: number; max?: number; aria: string;
   }) => (
-    <div className="inline-flex items-center gap-2">
+    <div className="inline-flex items-center gap-3">
       <button
         onClick={() => setValue(clamp(value - 1, min, max))}
-        className="h-8 w-8 rounded-lg border"
+        className="h-11 w-11 rounded-xl border border-gray-300 text-lg"
         aria-label={`decrease ${aria}`}
       >−</button>
       <input
@@ -146,20 +113,28 @@ export default function PricingCalculator({
         min={min}
         max={max}
         onChange={(e) => setValue(clamp(parseInt(e.target.value || "0", 10), min, max))}
-        className="h-8 w-16 rounded-lg border px-2 text-center"
+        className="h-11 w-24 rounded-xl border border-gray-300 px-3 text-center text-lg"
       />
       <button
         onClick={() => setValue(clamp(value + 1, min, max))}
-        className="h-8 w-8 rounded-lg border"
+        className="h-11 w-11 rounded-xl border border-gray-300 text-lg"
         aria-label={`increase ${aria}`}
       >+</button>
+    </div>
+  );
+
+  const Card: React.FC<React.PropsWithChildren<{className?: string; title?: string; subtitle?: string;}>> = ({ className="", title, subtitle, children }) => (
+    <div className={`rounded-2xl border border-gray-200 shadow-sm p-5 bg-white ${className}`}>
+      {title && <div className="text-base font-semibold">{title}</div>}
+      {subtitle && <div className="text-sm text-gray-600 mt-0.5">{subtitle}</div>}
+      <div className={title ? "mt-4" : ""}>{children}</div>
     </div>
   );
 
   const LeadPreset = ({ n, set }:{ n:number; set:(v:number)=>void }) => (
     <button
       type="button"
-      className="rounded-full border px-2.5 py-1 text-xs"
+      className="rounded-full border border-gray-300 px-3 py-1.5 text-xs hover:bg-gray-50"
       onClick={() => set(n)}
     >
       {n} leads
@@ -169,7 +144,7 @@ export default function PricingCalculator({
   return (
     <div className="space-y-8">
       {/* Tiers */}
-      <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {(Object.keys(TIERS) as TierKey[]).map((k) => {
           const t = TIERS[k];
           const selected = tierKey === k;
@@ -177,171 +152,143 @@ export default function PricingCalculator({
             <button
               key={k}
               onClick={() => selectTier(k)}
-              className={`w-full rounded-xl border px-4 py-3 text-left
-                ${selected ? "border-black bg-black text-white" : "border-gray-300 bg-white"}
+              className={`w-full rounded-2xl border px-5 py-4 text-left shadow-sm transition
+                ${selected ? "border-black bg-black text-white" : "border-gray-200 bg-white hover:border-gray-300"}
               `}
             >
               <div className="flex items-baseline justify-between">
-                <div className="font-medium">{t.name}</div>
-                <div className="text-sm opacity-80">${t.base}/mo</div>
+                <div className="text-lg font-semibold">{t.name}</div>
+                <div className="text-sm opacity-90">${t.base}/mo</div>
               </div>
-              <div className="mt-1 text-xs opacity-70">{t.tagline}</div>
+              <div className={`mt-1 text-sm ${selected ? "opacity-90" : "text-gray-600"}`}>{t.tagline}</div>
             </button>
           );
         })}
-      </section>
+      </div>
 
       {/* Agents */}
-      <section className="rounded-xl border border-gray-200 p-4">
-        <div className="flex flex-col sm:flex-row gap-6">
-          <div className="flex-1">
-            <label className="text-sm font-medium">Agents</label>
-            <div className="mt-2">
-              <Qty value={money.agents} setValue={setAgents} min={tier.minAgents} max={tier.maxAgents} aria="agents" />
-            </div>
-            <p className="mt-1 text-xs text-gray-500">
-              {tier.maxAgents ? `Min ${tier.minAgents}, max ${tier.maxAgents}` : `Minimum ${tier.minAgents}, no max`}
-            </p>
+      <Card title="Agents" subtitle={tier.maxAgents ? `Min ${tier.minAgents}, max ${tier.maxAgents}` : `Minimum ${tier.minAgents}, no max`}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <div className="text-sm font-medium mb-2">Agent count</div>
+            <Qty value={money.agents} setValue={setAgents} min={tier.minAgents} max={tier.maxAgents} aria="agents" />
           </div>
-          <div className="flex-1">
-            <label className="text-sm font-medium">
-              Price per agent <span className="opacity-60">(ex GST)</span>
-            </label>
-            <div className="mt-2 flex items-center gap-2">
-              <span className="rounded-lg border px-2 h-9 inline-flex items-center">$</span>
+          <div>
+            <div className="text-sm font-medium mb-2">Price per agent <span className="text-gray-500">(ex GST)</span></div>
+            <div className="flex items-center gap-3">
+              <span className="rounded-xl border border-gray-300 px-3 h-11 inline-flex items-center text-lg">$</span>
               <input
                 type="number"
-                className="h-9 w-28 rounded-lg border px-2"
+                className="h-11 w-32 rounded-xl border border-gray-300 px-3 text-lg"
                 value={perAgent}
                 min={0}
                 step="1"
                 onChange={(e) => setPerAgent(Math.max(0, Number(e.target.value || 0)))}
               />
-              <span className="text-sm text-gray-500">/agent/mo</span>
+              <span className="text-sm text-gray-600">/agent/mo</span>
             </div>
-            <p className="mt-1 text-xs text-gray-500">
-              Elite defaults to ${TIERS.elite.defaultPerAgent}/agent. Edit anytime.
-            </p>
+            <p className="mt-2 text-xs text-gray-500">Elite defaults to ${TIERS.elite.defaultPerAgent}/agent. Edit anytime.</p>
           </div>
         </div>
-      </section>
+      </Card>
 
       {/* Advertising Packages */}
-      <section className="rounded-xl border border-gray-200 p-4">
-        <div className="text-sm font-semibold mb-3">Advertising Packages <span className="opacity-60">(per property)</span></div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="rounded-lg border p-3">
-            <div className="font-medium">Standard</div>
-            <div className="text-sm opacity-80 mb-2">$599</div>
+      <Card title="Advertising Packages" subtitle="Per property">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="shadow-none border-gray-200" title="Standard" subtitle="$599">
             <Qty value={standardQty} setValue={setStandardQty} aria="standard packages" />
-          </div>
-          <div className="rounded-lg border p-3">
-            <div className="font-medium">Feature</div>
-            <div className="text-sm opacity-80 mb-2">$1299</div>
+          </Card>
+          <Card className="shadow-none border-gray-200" title="Feature" subtitle="$1299">
             <Qty value={featureQty} setValue={setFeatureQty} aria="feature packages" />
-          </div>
-          <div className="rounded-lg border p-3">
-            <div className="font-medium">Premier</div>
-            <div className="text-sm opacity-80 mb-2">$2999</div>
+          </Card>
+          <Card className="shadow-none border-gray-200" title="Premier" subtitle="$2999">
             <Qty value={premierQty} setValue={setPremierQty} aria="premier packages" />
-          </div>
+          </Card>
         </div>
-      </section>
+      </Card>
 
       {/* Lead Packs */}
-      <section className="rounded-xl border border-gray-200 p-4">
-        <div className="text-sm font-semibold mb-3">Lead Packs <span className="opacity-60">(basic)</span></div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="rounded-lg border p-3">
-            <div className="font-medium">Valuation &amp; Listing</div>
-            <div className="text-sm opacity-80 mb-2">$49/lead</div>
+      <Card title="Lead Packs" subtitle="Basic">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="shadow-none border-gray-200" title="Valuation & Listing" subtitle="$49/lead">
             <Qty value={valuationQty} setValue={setValuationQty} aria="valuation leads" />
-            <div className="mt-2 flex gap-2">
+            <div className="mt-3 flex gap-2 flex-wrap">
               <LeadPreset n={12} set={setValuationQty} />
               <LeadPreset n={28} set={setValuationQty} />
               <LeadPreset n={40} set={setValuationQty} />
             </div>
-          </div>
+          </Card>
 
-          <div className="rounded-lg border p-3">
-            <div className="font-medium">Finance (Mortgage)</div>
-            <div className="text-sm opacity-80 mb-2">$95/lead</div>
+          <Card className="shadow-none border-gray-200" title="Finance (Mortgage)" subtitle="$95/lead">
             <Qty value={financeQty} setValue={setFinanceQty} aria="finance leads" />
-            <div className="mt-2 flex gap-2">
+            <div className="mt-3 flex gap-2 flex-wrap">
               <LeadPreset n={12} set={setFinanceQty} />
               <LeadPreset n={28} set={setFinanceQty} />
               <LeadPreset n={40} set={setFinanceQty} />
             </div>
-          </div>
+          </Card>
 
-          <div className="rounded-lg border p-3">
-            <div className="font-medium">Insurance</div>
-            <div className="text-sm opacity-80 mb-2">$69/lead</div>
+          <Card className="shadow-none border-gray-200" title="Insurance" subtitle="$69/lead">
             <Qty value={insuranceQty} setValue={setInsuranceQty} aria="insurance leads" />
-            <div className="mt-2 flex gap-2">
+            <div className="mt-3 flex gap-2 flex-wrap">
               <LeadPreset n={12} set={setInsuranceQty} />
               <LeadPreset n={28} set={setInsuranceQty} />
               <LeadPreset n={40} set={setInsuranceQty} />
             </div>
-          </div>
+          </Card>
         </div>
-      </section>
+      </Card>
 
       {/* Order Summary */}
-      <section className="rounded-xl border border-gray-200 p-4 space-y-1">
-        <div className="text-sm font-semibold mb-2">Order Summary</div>
-
-        <div className="text-sm flex justify-between">
-          <span>{TIERS[money.tier].name} plan</span>
-          <span>${TIERS[money.tier].base.toFixed(2)}/mo</span>
-        </div>
-
-        <div className="text-sm flex justify-between">
-          <span>Agents × per-agent</span>
-          <span>
-            {money.agents} × ${money.perAgent.toFixed(2)} = ${(money.agents * money.perAgent).toFixed(2)}/mo
-          </span>
-        </div>
-
-        {(money.ads.total > 0) && (
-          <div className="text-sm flex justify-between">
-            <span>Advertising packages</span>
-            <span>${money.ads.total.toFixed(2)}/mo</span>
+      <Card title="Order Summary">
+        <div className="space-y-2 text-base">
+          <div className="flex justify-between">
+            <span>{TIERS[money.tier].name} plan</span>
+            <span>${TIERS[money.tier].base.toFixed(2)}/mo</span>
           </div>
-        )}
 
-        {(money.leads.total > 0) && (
-          <div className="text-sm flex justify-between">
-            <span>Lead packs</span>
-            <span>${money.leads.total.toFixed(2)}/mo</span>
+          <div className="flex justify-between">
+            <span>Agents × per-agent</span>
+            <span>{money.agents} × ${money.perAgent.toFixed(2)} = {(money.agents * money.perAgent).toFixed(2)}/mo</span>
           </div>
-        )}
 
-        <hr className="my-2" />
+          {money.ads.total > 0 && (
+            <div className="flex justify-between">
+              <span>Advertising packages</span>
+              <span>${money.ads.total.toFixed(2)}/mo</span>
+            </div>
+          )}
 
-        <div className="text-sm flex justify-between opacity-80">
-          <span>Subtotal (ex GST)</span>
-          <span>${money.subtotalExGst.toFixed(2)}</span>
-        </div>
-        <div className="text-sm flex justify-between opacity-80">
-          <span>GST (10%)</span>
-          <span>${money.gst.toFixed(2)}</span>
-        </div>
-        <div className="text-sm flex justify-between font-semibold mt-1">
-          <span>Total (incl. GST)</span>
-          <span>${money.totalInclGst.toFixed(2)}/mo</span>
-        </div>
+          {money.leads.total > 0 && (
+            <div className="flex justify-between">
+              <span>Lead packs</span>
+              <span>${money.leads.total.toFixed(2)}/mo</span>
+            </div>
+          )}
 
-        <div className="pt-3">
+          <hr className="my-3" />
+
+          <div className="flex justify-between text-gray-700">
+            <span>Subtotal (ex GST)</span>
+            <span>${money.subtotalExGst.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between text-gray-700">
+            <span>GST (10%)</span>
+            <span>${money.gst.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between font-semibold text-lg">
+            <span>Total (incl. GST)</span>
+            <span>${money.totalInclGst.toFixed(2)}/mo</span>
+          </div>
+
           <button
-            className="w-full h-11 rounded-xl bg-black text-white"
+            className="w-full h-12 rounded-2xl bg-black text-white mt-4 text-base"
             onClick={() => onContinue?.(money)}
           >
             Continue
           </button>
         </div>
-      </section>
+      </Card>
     </div>
   );
 }
