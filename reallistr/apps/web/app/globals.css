@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Optional: tiny polish so controls feel crisp */
+:root { --ring: 0 0% 0%; }
+button, input {
+  outline: none;
+}
