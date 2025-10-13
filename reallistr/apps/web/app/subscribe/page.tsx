@@ -1,8 +1,11 @@
+"use client";
+
 import PricingCalculator, { PricingPayload } from "@/components/PricingCalculator";
 
 export default function SubscribePage() {
   function handleChange(v: PricingPayload) {
     // Optional: sync into a store or preview /api/debug
+    // console.log("pricing:update", v);
   }
 
   async function handleContinue(v: PricingPayload) {
