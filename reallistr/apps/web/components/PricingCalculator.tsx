@@ -2,6 +2,8 @@
 import { useMemo, useState } from "react";
 
 type TierKey = "starter" | "pro" | "elite";
+type BusinessType = "Real Estate" | "Commercial" | "Finance Organization" | "Insurance Business";
+type Market = "Domestic" | "International";
 
 type Tier = {
   key: TierKey;
@@ -27,11 +29,20 @@ function clamp(n: number, min: number, max?: number) {
 }
 
 export type PricingPayload = {
+  businessType: BusinessType;
+  market: Market;
+
   tier: TierKey;
   agents: number;
   perAgent: number;
+
+  // upload names only (MVP)
+  agentsFileName?: string;
+  mediaZipName?: string;
+
   ads: { standardQty: number; featureQty: number; premierQty: number; total: number };
   leads: { valuationQty: number; financeQty: number; insuranceQty: number; total: number };
+
   subtotalExGst: number;
   gst: number;
   totalInclGst: number;
@@ -44,7 +55,11 @@ export default function PricingCalculator({
   onChange?: (payload: PricingPayload) => void;
   onContinue?: (payload: PricingPayload) => void;
 }) {
-  // ----- tier + agents -----
+  // Business + Market
+  const [businessType, setBusinessType] = useState<BusinessType>("Real Estate");
+  const [market, setMarket] = useState<Market>("Domestic");
+
+  // Tier + Agents
   const [tierKey, setTierKey] = useState<TierKey>("starter");
   const tier = TIERS[tierKey];
   const [agents, setAgents] = useState<number>(tier.minAgents);
@@ -57,15 +72,19 @@ export default function PricingCalculator({
     if (perAgent === 0 && t.defaultPerAgent !== 0) setPerAgent(t.defaultPerAgent);
   }
 
-  // ----- ad packages (per property) -----
+  // Ads
   const [standardQty, setStandardQty] = useState(0); // $599
   const [featureQty, setFeatureQty]   = useState(0); // $1299
   const [premierQty, setPremierQty]   = useState(0); // $2999
 
-  // ----- lead packs (per lead) -----
+  // Leads
   const [valuationQty, setValuationQty] = useState(0); // $49
   const [financeQty, setFinanceQty]     = useState(0); // $95
   const [insuranceQty, setInsuranceQty] = useState(0); // $69
+
+  // Agents media (MVP: just capture filenames)
+  const [agentsFileName, setAgentsFileName] = useState<string | undefined>();
+  const [mediaZipName, setMediaZipName] = useState<string | undefined>();
 
   const money = useMemo(() => {
     const safeAgents = clamp(agents, tier.minAgents, tier.maxAgents);
@@ -80,9 +99,13 @@ export default function PricingCalculator({
     const total = +(subtotal + gst).toFixed(2);
 
     const payload: PricingPayload = {
+      businessType,
+      market,
       tier: tierKey,
       agents: safeAgents,
       perAgent: perA,
+      agentsFileName,
+      mediaZipName,
       ads: { standardQty, featureQty, premierQty, total: adsTotal },
       leads: { valuationQty, financeQty, insuranceQty, total: leadsTotal },
       subtotalExGst: subtotal,
@@ -90,23 +113,23 @@ export default function PricingCalculator({
       totalInclGst: total,
     };
     return payload;
-  }, [tierKey, tier, agents, perAgent, standardQty, featureQty, premierQty, valuationQty, financeQty, insuranceQty]);
+  }, [
+    businessType, market,
+    tierKey, tier, agents, perAgent,
+    standardQty, featureQty, premierQty,
+    valuationQty, financeQty, insuranceQty,
+    agentsFileName, mediaZipName
+  ]);
 
-  // bubble up
+  // notify parent
   useMemo(() => onChange?.(money), [money, onChange]);
 
-  // small controls (upsized)
+  // small controls
   const Qty = ({
     value, setValue, min = 0, max, aria,
-  }: {
-    value: number; setValue: (n: number) => void; min?: number; max?: number; aria: string;
-  }) => (
+  }: { value: number; setValue: (n: number) => void; min?: number; max?: number; aria: string; }) => (
     <div className="inline-flex items-center gap-3">
-      <button
-        onClick={() => setValue(clamp(value - 1, min, max))}
-        className="h-11 w-11 rounded-xl border border-gray-300 text-lg"
-        aria-label={`decrease ${aria}`}
-      >−</button>
+      <button onClick={() => setValue(clamp(value - 1, min, max))} className="h-11 w-11 rounded-xl border border-gray-300 text-lg" aria-label={`decrease ${aria}`}>−</button>
       <input
         type="number"
         value={value}
@@ -115,11 +138,7 @@ export default function PricingCalculator({
         onChange={(e) => setValue(clamp(parseInt(e.target.value || "0", 10), min, max))}
         className="h-11 w-24 rounded-xl border border-gray-300 px-3 text-center text-lg"
       />
-      <button
-        onClick={() => setValue(clamp(value + 1, min, max))}
-        className="h-11 w-11 rounded-xl border border-gray-300 text-lg"
-        aria-label={`increase ${aria}`}
-      >+</button>
+      <button onClick={() => setValue(clamp(value + 1, min, max))} className="h-11 w-11 rounded-xl border border-gray-300 text-lg" aria-label={`increase ${aria}`}>+</button>
     </div>
   );
 
@@ -132,46 +151,80 @@ export default function PricingCalculator({
   );
 
   const LeadPreset = ({ n, set }:{ n:number; set:(v:number)=>void }) => (
-    <button
-      type="button"
-      className="rounded-full border border-gray-300 px-3 py-1.5 text-xs hover:bg-gray-50"
-      onClick={() => set(n)}
-    >
+    <button type="button" className="rounded-full border border-gray-300 px-3 py-1.5 text-xs hover:bg-gray-50" onClick={() => set(n)}>
       {n} leads
     </button>
   );
 
   return (
     <div className="space-y-8">
-      {/* Tiers */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {(Object.keys(TIERS) as TierKey[]).map((k) => {
-          const t = TIERS[k];
-          const selected = tierKey === k;
-          return (
-            <button
-              key={k}
-              onClick={() => selectTier(k)}
-              className={`w-full rounded-2xl border px-5 py-4 text-left shadow-sm transition
-                ${selected ? "border-black bg-black text-white" : "border-gray-200 bg-white hover:border-gray-300"}
-              `}
-            >
-              <div className="flex items-baseline justify-between">
-                <div className="text-lg font-semibold">{t.name}</div>
-                <div className="text-sm opacity-90">${t.base}/mo</div>
-              </div>
-              <div className={`mt-1 text-sm ${selected ? "opacity-90" : "text-gray-600"}`}>{t.tagline}</div>
-            </button>
-          );
-        })}
-      </div>
+      {/* Business + Market + Tiers (compact) */}
+      <Card>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="md:col-span-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <label className="text-sm">
+                <span className="block font-medium mb-1">Business type</span>
+                <select
+                  className="w-full h-11 rounded-xl border border-gray-300 px-3"
+                  value={businessType}
+                  onChange={(e) => setBusinessType(e.target.value as BusinessType)}
+                >
+                  <option>Real Estate</option>
+                  <option>Commercial</option>
+                  <option>Finance Organization</option>
+                  <option>Insurance Business</option>
+                </select>
+              </label>
+
+              <label className="text-sm">
+                <span className="block font-medium mb-1">Market</span>
+                <select
+                  className="w-full h-11 rounded-xl border border-gray-300 px-3"
+                  value={market}
+                  onChange={(e) => setMarket(e.target.value as Market)}
+                >
+                  <option>Domestic</option>
+                  <option>International</option>
+                </select>
+              </label>
+            </div>
+          </div>
+          <div className="md:col-span-1">
+            <div className="grid grid-cols-3 gap-2">
+              {(Object.keys(TIERS) as TierKey[]).map((k) => {
+                const t = TIERS[k];
+                const selected = tierKey === k;
+                return (
+                  <button
+                    key={k}
+                    onClick={() => selectTier(k)}
+                    className={`rounded-xl border px-3 py-2 text-left shadow-sm transition
+                      ${selected ? "border-black bg-black text-white" : "border-gray-200 bg-white hover:border-gray-300"}`}
+                  >
+                    <div className="text-sm font-semibold">{t.name}</div>
+                    <div className="text-xs opacity-90">${t.base}/mo</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </Card>
 
       {/* Agents */}
-      <Card title="Agents" subtitle={tier.maxAgents ? `Min ${tier.minAgents}, max ${tier.maxAgents}` : `Minimum ${tier.minAgents}, no max`}>
+      <Card
+        title="Agents"
+        subtitle={
+          tier.maxAgents
+            ? `Min ${tier.minAgents}, max ${tier.maxAgents} • ${tier.name} plan`
+            : `Minimum ${tier.minAgents}, no max • ${tier.name} plan`
+        }
+      >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <div className="text-sm font-medium mb-2">Agent count</div>
-            <Qty value={money.agents} setValue={setAgents} min={tier.minAgents} max={tier.maxAgents} aria="agents" />
+            <Qty value={agents} setValue={setAgents} min={tier.minAgents} max={tier.maxAgents} aria="agents" />
           </div>
           <div>
             <div className="text-sm font-medium mb-2">Price per agent <span className="text-gray-500">(ex GST)</span></div>
@@ -239,12 +292,50 @@ export default function PricingCalculator({
         </div>
       </Card>
 
+      {/* Agents media (compact) */}
+      <Card title="Agents media" subtitle="Upload agents list and optional media ZIP">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <label className="text-sm">
+            <span className="block font-medium mb-1">Agents file (.csv / .xlsx)</span>
+            <input
+              type="file"
+              accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+              className="block w-full rounded-xl border border-gray-300 p-2"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                setAgentsFileName(f ? f.name : undefined);
+              }}
+            />
+            {agentsFileName && <div className="mt-1 text-xs text-gray-600">Selected: {agentsFileName}</div>}
+          </label>
+
+          <label className="text-sm">
+            <span className="block font-medium mb-1">Media ZIP (optional)</span>
+            <input
+              type="file"
+              accept=".zip"
+              className="block w-full rounded-xl border border-gray-300 p-2"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                setMediaZipName(f ? f.name : undefined);
+              }}
+            />
+            {mediaZipName && <div className="mt-1 text-xs text-gray-600">Selected: {mediaZipName}</div>}
+          </label>
+        </div>
+      </Card>
+
       {/* Order Summary */}
       <Card title="Order Summary">
         <div className="space-y-2 text-base">
+          <div className="flex justify-between text-gray-700">
+            <span>Business / Market</span>
+            <span>{businessType} • {market}</span>
+          </div>
+
           <div className="flex justify-between">
-            <span>{TIERS[money.tier].name} plan</span>
-            <span>${TIERS[money.tier].base.toFixed(2)}/mo</span>
+            <span>{TIERS[tierKey].name} plan</span>
+            <span>${TIERS[tierKey].base.toFixed(2)}/mo</span>
           </div>
 
           <div className="flex justify-between">
@@ -281,10 +372,7 @@ export default function PricingCalculator({
             <span>${money.totalInclGst.toFixed(2)}/mo</span>
           </div>
 
-          <button
-            className="w-full h-12 rounded-2xl bg-black text-white mt-4 text-base"
-            onClick={() => onContinue?.(money)}
-          >
+          <button className="w-full h-12 rounded-2xl bg-black text-white mt-4 text-base" onClick={() => onContinue?.(money)}>
             Continue
           </button>
         </div>
