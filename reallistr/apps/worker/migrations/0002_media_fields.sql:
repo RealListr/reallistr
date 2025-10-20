@@ -1,0 +1,25 @@
+-- listings: richer fields used by both Media & Map
+ALTER TABLE listings
+  ADD COLUMN suburb TEXT,
+  ADD COLUMN price TEXT,
+  ADD COLUMN open_time TEXT,
+  ADD COLUMN beds INTEGER,
+  ADD COLUMN baths INTEGER,
+  ADD COLUMN cars INTEGER,
+  ADD COLUMN ev INTEGER,           -- 0/1
+  ADD COLUMN solar INTEGER,        -- 0/1
+  ADD COLUMN area TEXT,            -- allow "120", "120 m²", etc
+  ADD COLUMN cover_url TEXT,
+  ADD COLUMN agency_name TEXT,
+  ADD COLUMN agency_logo_url TEXT,
+  ADD COLUMN agents_json TEXT;     -- JSON string [{avatarUrl:string}, ...]
+
+-- optional: seed one nice record (skip if you already have data)
+INSERT INTO listings (title, description, suburb, lat, lng, price, open_time, beds, baths, cars, ev, solar, area, cover_url, agency_name, agents_json)
+VALUES (
+  'Bondi Penthouse','Ocean views','Manly',-33.8908,151.2743,
+  '$1.35–$1.45m','Sat 11:15–11:45am',2,2,1,1,1,'120',
+  'https://images.unsplash.com/photo-1560184897-ae75f418493e?q=80&w=1600&auto=format&fit=crop',
+  'Luxe Realty',
+  '[{"avatarUrl":"https://randomuser.me/api/portraits/women/65.jpg"},{"avatarUrl":"https://randomuser.me/api/portraits/men/44.jpg"}]'
+);

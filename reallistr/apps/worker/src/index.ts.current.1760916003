@@ -1,0 +1,45 @@
+// Minimal Cloudflare Worker entry with D1 + CORS
+export interface Env {
+  DB: D1Database
+}
+
+function withCORS(res: Response) {
+  res.headers.set('Access-Control-Allow-Origin', '*')
+  res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+  res.headers.set('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+  return res
+}
+
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const url = new URL(request.url)
+
+    if (request.method === 'OPTIONS') {
+      return withCORS(new Response(null, { status: 204 }))
+    }
+
+    if (url.pathname === '/' || url.pathname === '/health') {
+      return withCORS(new Response(JSON.stringify({ status: 'ok' }), {
+        headers: { 'content-type': 'application/json' }
+      }))
+    }
+
+    if (url.pathname === '/listings') {
+      try {
+        const rs = await env.DB.prepare(
+          'SELECT id, title, price, created_at FROM listings ORDER BY id DESC'
+        ).all()
+        return withCORS(new Response(JSON.stringify(rs.results ?? []), {
+          headers: { 'content-type': 'application/json' }
+        }))
+      } catch (e: any) {
+        // If table doesn't exist yet, return empty array with hint
+        return withCORS(new Response(JSON.stringify({ error: e?.message, results: [] }), {
+          headers: { 'content-type': 'application/json' }, status: 200
+        }))
+      }
+    }
+
+    return withCORS(new Response('Not Found', { status: 404 }))
+  }
+}
