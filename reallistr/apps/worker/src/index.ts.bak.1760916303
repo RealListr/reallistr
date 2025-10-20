@@ -1,0 +1,27 @@
+import { Hono } from "hono";
+import { listings } from "./routes/listings";
+
+const app = new Hono<{ Bindings: Env }>();
+
+app.route("/listings", listings);
+
+/** R2 signed upload (cover image) */
+app.post("/media/sign", async (c) => {
+  // simple unique key
+  const key = `covers/${crypto.randomUUID()}.jpg`;
+
+  // we’ll allow simple PUT without signature for local dev.
+  // In prod, you should issue a signed URL. For now, return a path and use PUT to R2 public bucket.
+  return c.json({
+    key,
+    uploadUrl: `https://${
+      // @ts-ignore - bound in wrangler.toml as R2 public bucket
+      c.env.R2.bucketName ?? "reallistr-media"
+    }.r2.cloudflarestorage.com/${key}`,
+    publicUrl: `https://${
+      c.env.R2.bucketName ?? "reallistr-media"
+    }.r2.cloudflarestorage.com/${key}`,
+  });
+});
+
+export default app;
